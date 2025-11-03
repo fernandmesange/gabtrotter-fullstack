@@ -1,114 +1,53 @@
-version: "3.9"
-
+version: "3.8"
 
 services:
-  # ───────────────────────────────
-  # 🚀 FRONTEND (React / Vite)
-  # ───────────────────────────────
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
-    container_name: gabtrotter-frontend
-    restart: always
-    networks:
-      - traefik-public
-      - gabtrotter-network
     expose:
-      - "3000"
+      - 3000
     environment:
       - NODE_ENV=production
-      - VITE_API_URL=http://localhost:5300/api/
+      - VITE_API_URL=https://gabtrotter.org/api/
+      - VITE_ENV=production
       - VITE_RECAPTCHA_SITE_KEY=6LeIX_opAAAAAADTeU65RQ4DOzB5STo412GoaHc3
-      - VITE_NODE_ENV=prod
-
-
+    networks:
+      - dokploy-network
     labels:
-      - "traefik.enable=true"
+      - traefik.enable=true
+      - traefik.http.routers.gabtrotter-frontend.rule=Host(`gabtrotter.org`) || Host(`www.gabtrotter.org`)
+      - traefik.http.routers.gabtrotter-frontend.entrypoints=websecure
+      - traefik.http.routers.gabtrotter-frontend.tls.certresolver=letsencrypt
+      - traefik.http.services.gabtrotter-frontend.loadbalancer.server.port=3000
 
-      # HTTP → HTTPS
-      - "traefik.http.routers.gabtrotter-http.rule=Host(`gabtrotter.org`) || Host(`www.gabtrotter.org`)"
-      - "traefik.http.routers.gabtrotter-http.entrypoints=web"
-      - "traefik.http.routers.gabtrotter-http.middlewares=redirect-to-https"
-
-      # HTTPS sécurisé
-      - "traefik.http.routers.gabtrotter-frontend.rule=Host(`gabtrotter.org`) || Host(`www.gabtrotter.org`)"
-      - "traefik.http.routers.gabtrotter-frontend.entrypoints=websecure"
-      - "traefik.http.routers.gabtrotter-frontend.tls=true"
-      - "traefik.http.routers.gabtrotter-frontend.tls.certresolver=letsencrypt"
-
-      # Service interne
-      - "traefik.http.services.gabtrotter-frontend.loadbalancer.server.port=3000"
-
-  # ───────────────────────────────
-  # ⚙️ BACKEND (Express / API)
-  # ───────────────────────────────
   backend:
     build:
       context: ./Backend
       dockerfile: Dockerfile
-    container_name: gabtrotter-backend
-    restart: always
-    networks:
-      - traefik-public
-      - gabtrotter-network
     expose:
-      - "5000"
+      - 5000
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGO_URL=mongodb+srv://admin:raponda2019@cluster0.rtzlb1w.mongodb.net/gabtrotter?retryWrites=true&w=majority&appName=Cluster0
+      - FRONTEND_URL=https://gabtrotter.org
+      - MONGO_URL=mongodb+srv://admin:raponda2019@cluster0.rtzlb1w.mongodb.net/gabtrotter?retryWrites=true&w=majority
       - JWT_SECRET=qwepowiep1o3183w68849etgfsdkfbzx
       - CLOUDINARY_CLOUD_NAME=dyh0rsrbd
       - CLOUDINARY_API_KEY=765353953515239
       - CLOUDINARY_API_SECRET=QV9htwUrfdSYkIQyPD42msrFS_E
       - RESEND_API_KEY=re_QXFWpXFj_CFmLWC89FRBQSWEs3wF816WH
-      - FRONTEND_URL=https://gabtrotter.org
       - EMAIL_USER=contact@gabtrotter.org
       - EMAIL_PASSWORD="Azerty2022@@*root@srv622311:/var/www/GabtrotterBackend#"
-    labels:
-      - "traefik.enable=true"
-
-      # HTTPS API
-      - "traefik.http.routers.gabtrotter-backend.rule=Host(`gabtrotter.org`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.gabtrotter-backend.entrypoints=websecure"
-      - "traefik.http.routers.gabtrotter-backend.tls=true"
-      - "traefik.http.routers.gabtrotter-backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.gabtrotter-backend.loadbalancer.server.port=5000"
-
-  # ───────────────────────────────
-  # 🌐 TRAEFIK (reverse proxy)
-  # ───────────────────────────────
-  traefik:
-    image: traefik:v3.1
-    container_name: traefik
-    restart: always
-    command:
-      - "--api.dashboard=true"
-      - "--api.insecure=false"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=contact@gabtrotter.org"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./letsencrypt:/letsencrypt"
     networks:
-      - traefik-public
+      - dokploy-network
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-
+      - traefik.enable=true
+      - traefik.http.routers.gabtrotter-backend.rule=Host(`gabtrotter.org`) && PathPrefix(`/api`)
+      - traefik.http.routers.gabtrotter-backend.entrypoints=websecure
+      - traefik.http.routers.gabtrotter-backend.tls.certresolver=letsencrypt
+      - traefik.http.services.gabtrotter-backend.loadbalancer.server.port=5000
 
 networks:
-  traefik-public:
-    driver: bridge
-  gabtrotter-network:
-    driver: bridge
+  dokploy-network:
+    external: true

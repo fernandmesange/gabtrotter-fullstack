@@ -1,12 +1,5 @@
 version: "3.9"
 
-networks:
-networks:
-  traefik-public:
-    driver: bridge
-  gabtrotter-network:
-    driver: bridge
-
 
 services:
   # ───────────────────────────────
@@ -72,7 +65,7 @@ services:
       - RESEND_API_KEY=re_QXFWpXFj_CFmLWC89FRBQSWEs3wF816WH
       - FRONTEND_URL=https://gabtrotter.org
       - EMAIL_USER=contact@gabtrotter.org
-      - EMAIL_PASSWORD=Azerty2022@@*root@srv622311:/var/www/GabtrotterBackend# 
+      - EMAIL_PASSWORD="Azerty2022@@*root@srv622311:/var/www/GabtrotterBackend#"
     labels:
       - "traefik.enable=true"
 
@@ -112,3 +105,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+
+networks:
+  traefik-public:
+    driver: bridge
+  gabtrotter-network:
+    driver: bridge

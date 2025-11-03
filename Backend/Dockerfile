@@ -1,18 +1,23 @@
-# Étape 1 : base image Node.js
-FROM node:18-alpine
 
-# Créer un dossier de travail dans le container
+
+# ───────────────────────────────
+# Étape 1 : Build et install
+# ───────────────────────────────
+FROM node:20-alpine AS base
+
 WORKDIR /app
 
-# Copier les fichiers de dépendances
+# Copie des fichiers de config
 COPY package*.json ./
 
-# Installer les dépendances
-RUN npm install
+# Installation des dépendances (prod + dev si besoin)
+RUN npm ci --legacy-peer-deps
 
-# Copier tout le reste
+# Copie du code source
 COPY . .
 
+# Build si TypeScript ou transpilation
+# RUN npm run build
 
 ENV MONGO_URL=mongodb+srv://admin:raponda2019@cluster0.rtzlb1w.mongodb.net/gabtrotter?retryWrites=true&w=majority&appName=Cluster0
 ENV JWT_SECRET=qwepowiep1o3183w68849etgfsdkfbzx
@@ -25,8 +30,27 @@ ENV NODE_ENV=development
 ENV EMAIL_USER=contact@gabtrotter.org
 ENV EMAIL_PASSWORD=Azerty2022@@*
 
-# Exposer le port 5000
-EXPOSE 5000
+# ───────────────────────────────
+# Étape 2 : Exécution production
+# ───────────────────────────────
+FROM node:20-alpine
 
-# Lancer le serveur
-CMD ["npm", "start"]
+# Crée un utilisateur non-root pour la sécurité
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+# Copie depuis l’étape précédente
+COPY --from=base /app /app
+
+# Copie uniquement les dépendances nécessaires
+RUN npm prune --production
+
+# Définir les variables d’environnement
+ENV NODE_ENV=production
+ENV PORT=5000
+
+EXPOSE 5000
+USER appuser
+
+CMD ["node", "src/index.js"]

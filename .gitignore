@@ -1,0 +1,79 @@
+# ──────────────── Node.js ────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# ──────────────── Environnements ────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# ──────────────── Build & Dist ────────────────
+dist/
+build/
+.next/
+out/
+.cache/
+.temp/
+coverage/
+
+# ──────────────── Logs ────────────────
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ──────────────── IDE & OS ────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ──────────────── Docker / Dokploy ────────────────
+letsencrypt/acme.json
+*.tar
+docker-compose.override.yml
+*.bak
+
+# ──────────────── Test / Coverage ────────────────
+coverage/
+jest-html-reporters-attach/
+test-results/
+
+# ──────────────── Frontend (React/Vite/Next) ────────────────
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.next/
+Frontend/out/
+Frontend/.vite/
+Frontend/.vercel/
+
+# ──────────────── Backend (Express) ────────────────
+Backend/node_modules/
+Backend/dist/
+Backend/build/
+Backend/.nyc_output
+Backend/coverage/
+
+# ──────────────── Miscellaneous ────────────────
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.bak
+*.tmp
+*.lock
+
+# ──────────────── Local data / uploads (si tu en as) ────────────────
+uploads/
+storage/
+tmp/

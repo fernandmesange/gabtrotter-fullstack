@@ -55,6 +55,7 @@ Frontend/.next/
 Frontend/out/
 Frontend/.vite/
 Frontend/.vercel/
+Frontend/.env
 
 # ──────────────── Backend (Express) ────────────────
 Backend/node_modules/
@@ -62,6 +63,7 @@ Backend/dist/
 Backend/build/
 Backend/.nyc_output
 Backend/coverage/
+Backend/.env
 
 # ──────────────── Miscellaneous ────────────────
 *.zip

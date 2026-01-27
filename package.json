@@ -1,0 +1,11 @@
+{
+  "name": "gabtrotter-fullstack",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix Backend & npm run dev --prefix Frontend",
+    "build:frontend": "npm run build --prefix Frontend",
+    "copy:frontend": "rm -rf Backend/public && mkdir -p Backend/public && cp -R Frontend/dist/* Backend/public",
+    "build": "npm run build:frontend && npm run copy:frontend",
+    "start": "npm run start --prefix Backend"
+  }
+}

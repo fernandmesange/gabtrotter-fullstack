@@ -1,52 +1,36 @@
 version: "3.8"
 
 services:
-  frontend:
+  app:
     build:
-      context: ./Frontend
+      context: .
       dockerfile: Dockerfile
-    expose:
-      - 3000
-    environment:
-      - NODE_ENV=production
-      - VITE_API_URL=https://gabtrotter.org/api/
-      - VITE_ENV=production
-      - VITE_RECAPTCHA_SITE_KEY=6LeIX_opAAAAAADTeU65RQ4DOzB5STo412GoaHc3
-    networks:
-      - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gabtrotter-frontend.rule=Host(`gabtrotter.org`) || Host(`www.gabtrotter.org`)
-      - traefik.http.routers.gabtrotter-frontend.entrypoints=websecure
-      - traefik.http.routers.gabtrotter-frontend.tls.certresolver=letsencrypt
-      - traefik.http.services.gabtrotter-frontend.loadbalancer.server.port=3000
-
-  backend:
-    build:
-      context: ./Backend
-      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
+        VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY}
     expose:
       - 5000
     environment:
-      - NODE_ENV=production
-      - PORT=5000
-      - FRONTEND_URL=https://gabtrotter.org
-      - MONGO_URL=mongodb+srv://admin:raponda2019@cluster0.rtzlb1w.mongodb.net/gabtrotter?retryWrites=true&w=majority
-      - JWT_SECRET=qwepowiep1o3183w68849etgfsdkfbzx
-      - CLOUDINARY_CLOUD_NAME=dyh0rsrbd
-      - CLOUDINARY_API_KEY=765353953515239
-      - CLOUDINARY_API_SECRET=QV9htwUrfdSYkIQyPD42msrFS_E
-      - RESEND_API_KEY=re_QXFWpXFj_CFmLWC89FRBQSWEs3wF816WH
-      - EMAIL_USER=contact@gabtrotter.org
-      - EMAIL_PASSWORD="Azerty2022@@*root@srv622311:/var/www/GabtrotterBackend#"
+      NODE_ENV: production
+      PORT: 5000
+      FRONTEND_URL: ${FRONTEND_URL}
+      MONGO_URL: ${MONGO_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
     networks:
       - dokploy-network
     labels:
       - traefik.enable=true
-      - traefik.http.routers.gabtrotter-backend.rule=Host(`gabtrotter.org`) && PathPrefix(`/api`)
-      - traefik.http.routers.gabtrotter-backend.entrypoints=websecure
-      - traefik.http.routers.gabtrotter-backend.tls.certresolver=letsencrypt
-      - traefik.http.services.gabtrotter-backend.loadbalancer.server.port=5000
+      - traefik.http.routers.gabtrotter.rule=Host(`${APP_DOMAIN}`) || Host(`www.${APP_DOMAIN}`)
+      - traefik.http.routers.gabtrotter.entrypoints=websecure
+      - traefik.http.routers.gabtrotter.tls.certresolver=letsencrypt
+      - traefik.http.services.gabtrotter.loadbalancer.server.port=5000
 
 networks:
   dokploy-network:

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "copy-frontend": "cp -R ../Frontend/dist ./public"
   },
   "keywords": [],
   "author": "",

@@ -60,9 +60,10 @@ app.use(express.json({limit: '20mb'}));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true , limit: '20mb'}));
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
+app.get('/api/health', (req, res) => {
+  res.json({ message: 'ok' });
 });
+
 
 app.use((req, res, next) => {
   req.on('data', (chunk) => {

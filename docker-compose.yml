@@ -25,12 +25,6 @@ services:
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
     networks:
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.gabtrotter.rule=Host(`${APP_DOMAIN}`) || Host(`www.${APP_DOMAIN}`)
-      - traefik.http.routers.gabtrotter.entrypoints=websecure
-      - traefik.http.routers.gabtrotter.tls.certresolver=letsencrypt
-      - traefik.http.services.gabtrotter.loadbalancer.server.port=5000
 
 networks:
   dokploy-network:

@@ -1,116 +1,47 @@
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import FormBuilder from './pages/FormBuilder';
-import UpdateNewUser from './pages/UpdateNewUser';
-import Dashboard from './pages/Dashboard';
-import { Toaster } from '@/components/ui/toaster';
-import EventManagement from './pages/Dashboard-Tabs/Event-management';
-import EventPage from './pages/EventPage';
-import CheckParticipants from './pages/Dashboard-Tabs/CheckParticipants';
-
-import ProtectedRoute from './context/ProtectedRoute';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/resetPassword';
-import Header from './components/header/Header';
-import SurveyResponses from './pages/SurveyResponses';
-import OffersList from './pages/OffersList';
-import OfferPage from './pages/OfferPage';
-import CookieBanner from './components/CookieBanner';
-import PolitiqueConfidentialite from './pages/Confidentiality';
-import CourseManagement from './pages/Dashboard-Tabs/Course-Management';
-import CoursePage from './pages/Dashboard-Tabs/CoursePage';
-import LoginPage from './pages/LoginPage';
-import UpdateUserLandingPage from './pages/UpdateUserLandingPage';
-import EventsList from './pages/EventList';
 
 function App() {
   return (
-    <>
-      <Router>
-        <ConditionalHeader />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/formbuilder" element={<FormBuilder />} />
-          <Route path="/auth/update-new-user/:id" element={<UpdateNewUser />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/offer/:id" element={<OfferPage />} />
-          <Route path="/offers/" element={<OffersList />} />
-          <Route path="/confidentiality" element={<PolitiqueConfidentialite />} />
-          <Route path="/events" element={<EventsList/>} />
-          <Route path="/event/:id" element={<EventPage />} />
-          <Route path="/event/checkParticipation/" element={<CheckParticipants />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/update-subscriber-link/:id" element={<UpdateUserLandingPage />} />
-
-
-          {/* Admin routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/dashboard/event-management/:id"
-            element={
-              <ProtectedRoute>
-                <EventManagement />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/dashboard/event-management/:id"
-            element={
-              <ProtectedRoute>
-                <EventManagement />
-              </ProtectedRoute>
-            }
-          />
-
-        <Route
-            path="/dashboard/course-management/:id"
-            element={
-              <ProtectedRoute>
-                <CourseManagement />
-              </ProtectedRoute>
-            }
-          />
-
-<Route path="/dashboard/coursePage/:courseId"
-            element={
-              <ProtectedRoute>
-                <CoursePage/>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/dashboard/survey-responses/:id"
-            element={<ProtectedRoute><SurveyResponses /></ProtectedRoute>}
-          />
-        </Routes>
-
-        
-      </Router>
-      <Toaster />
-      <CookieBanner />
-    </>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,237,213,0.9),transparent_55%),linear-gradient(180deg,#fff7ed,white_60%,#ffedd5)] px-6 py-16 text-slate-900">
+      <section className="mx-auto w-full max-w-3xl overflow-hidden rounded-3xl border border-orange-200/70 bg-white/85 shadow-2xl shadow-orange-200/40 backdrop-blur">
+        <div className="bg-orange-500 px-8 py-6 text-white">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+              Message officiel
+            </div>
+            <img className="h-10 w-auto" src="/logo-blanc.png" alt="Logo Gabtrotter" />
+          </div>
+          <h1 className="mt-6 text-3xl font-semibold leading-tight sm:text-4xl">
+            Fermeture définitive de l&apos;association Gabtrotter
+          </h1>
+        </div>
+        <div className="flex flex-col gap-6 px-8 py-8">
+          <div className="space-y-4 text-base leading-relaxed text-slate-700 sm:text-lg">
+            <p>
+              L&apos;association Gabtrotter informe le public, ses partenaires et l&apos;ensemble de sa
+              communauté qu&apos;à compter du 31 mars 2026, elle cessera définitivement ses activités
+              et fermera ses portes.
+            </p>
+            <p>
+              Cette décision marque la fin d&apos;un parcours associatif riche en initiatives, en
+              engagements et en collaborations qui ont contribué, durant ces années, à promouvoir
+              nos actions et nos valeurs.
+            </p>
+            <p>
+              Nous adressons nos sincères remerciements à toutes les personnes, institutions et
+              partenaires qui ont accompagné l&apos;association tout au long de son existence.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-orange-200/70 bg-orange-50/80 px-5 py-4 text-sm text-orange-900">
+            Pour toute information complémentaire, merci de contacter :
+            <a className="ml-2 font-semibold underline" href="mailto:associationgabtrotter@gmail.com">
+              associationgabtrotter@gmail.com
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
   );
-}
-
-// ConditionalHeader Component
-function ConditionalHeader() {
-  const location = useLocation();
-
-  // Hide header for admin routes
-  const isAdminRoute = location.pathname.startsWith('/admin');
-
-  return !isAdminRoute && <Header />;
 }
 
 export default App;

@@ -13,6 +13,20 @@ export const generateVerificationCode = () => {
   return verificationCode;
 }
 
+export const createAccountSetupToken = (userId) => jwt.sign(
+  { userId: userId.toString(), purpose: 'account-setup' },
+  process.env.JWT_SECRET,
+  { expiresIn: '24h' },
+);
+
+export const verifyAccountSetupToken = (token, expectedUserId) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (decoded.purpose !== 'account-setup' || decoded.userId !== expectedUserId.toString()) {
+    throw new Error('Jeton de configuration invalide');
+  }
+  return decoded;
+};
+
 export const signup = async (req, res) => {
   try {
     const { email,password,fullname,role } = req.body;
@@ -42,7 +56,6 @@ export const signup = async (req, res) => {
 
 
 export const login = async (req, res) => {
-  console.log(req.body);
   try {
     const { email,password} = req.body;
     if (!email || !password ) {
@@ -58,7 +71,11 @@ export const login = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: 'Informations de connexion invalides' });
     }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
     res.status(200).json({ token, user: { email: user.email, name: user.fullname, role: user.role, _id: user._id,  mobileCode: user.mobileCode ? user.mobileCode : null } });
   }catch (error) {
     console.log(error);
@@ -66,11 +83,9 @@ export const login = async (req, res) => {
   }
 };
 
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   
   const token = req.headers.authorization;
-  console.log(token);
-
   if (!token) {
     console.log("Token non fourni");
     return res.status(401).json({ message: 'Token non fourni' });
@@ -85,13 +100,32 @@ export const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(tokenValue, process.env.JWT_SECRET);
-    req.userId = decoded.userId;  // On récupère l'userId spécifiquement
-    console.log("Token valide", req.userId);
-    next();  // Passer à la prochaine middleware ou route
+    const user = await User.findById(decoded.userId).select('_id role isVerified');
+    if (!user) return res.status(401).json({ message: 'Utilisateur introuvable' });
+
+    req.userId = user._id.toString();
+    req.user = user;
+    next();
   } catch (error) {
     console.log("Token invalide", error.message);
     res.status(401).json({ message: 'Token invalide' });
   }
+};
+
+export const requireRoles = (...roles) => (req, res, next) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({ message: 'Accès non autorisé pour ce rôle' });
+  }
+  next();
+};
+
+export const requireSelfOrRoles = (...roles) => (req, res, next) => {
+  const targetUserId = req.params.userId || req.params.id;
+  const isSelf = targetUserId && req.userId === targetUserId;
+  if (!isSelf && (!req.user || !roles.includes(req.user.role))) {
+    return res.status(403).json({ message: 'Accès non autorisé à cet utilisateur' });
+  }
+  next();
 };
 
 
@@ -118,7 +152,9 @@ export const signUpWithLink = async (req,res) => {
 
     const currentUser = await User.findOne({ email });
 
-    console.log('http://localhost:5173/auth/update-new-user/'+currentUser._id);
+    const setupToken = createAccountSetupToken(currentUser._id);
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://gabtrotter.org').replace(/\/$/, '');
+    const setupUrl = `${frontendUrl}/auth/update-new-user/${currentUser._id}?token=${encodeURIComponent(setupToken)}`;
     const emailData = {
       from: 'contact@gabtrotter.org',
       to: email,
@@ -127,7 +163,7 @@ export const signUpWithLink = async (req,res) => {
         <p>Bonjour,</p>
         <p>Vous avez été invité à créer un compte sur notre application CRM. Voici vos informations de connexion :</p>
         <p>Email: ${email}</p>
-        <p>Voici votre lien pour configurer votre compte : <a href="https://gabtrotter.org/auth/update-new-user/${currentUser._id}">Lien de configuration</a></p>
+        <p>Voici votre lien personnel, valable 24 heures, pour configurer votre compte : <a href="${setupUrl}">Lien de configuration</a></p>
         <p>Cordialement,</p>
         <p>L\'équipe GabTrotter</p>
       `
@@ -182,7 +218,15 @@ export const deleteUser = async (req,res) => {
 
 export const updateUserWithLink = async (req,res) => {
   try{
-    const {password,fullname,_id,mobileCode} = req.body;
+    const {password,fullname,_id,mobileCode,setupToken} = req.body;
+    if (!setupToken) {
+      return res.status(401).json({ message: 'Lien de configuration incomplet' });
+    }
+    try {
+      verifyAccountSetupToken(setupToken, _id);
+    } catch {
+      return res.status(401).json({ message: 'Lien de configuration invalide ou expiré' });
+    }
     const user = await User.findOne({ _id:_id });
     if(!user){
       return res.status(400).json({ message: 'Utilisateur non trouvé' });
@@ -343,7 +387,9 @@ export const signUpFromLandingPage = async (req,res) => {
 
     const currentUser = await User.findOne({ email });
 
-    console.log('http://localhost:5173/auth/update-subscriber-link/'+currentUser._id);
+    const setupToken = createAccountSetupToken(currentUser._id);
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://gabtrotter.org').replace(/\/$/, '');
+    const setupUrl = `${frontendUrl}/auth/update-subscriber-link/${currentUser._id}?token=${encodeURIComponent(setupToken)}`;
     const emailData = {
       from: 'contact@gabtrotter.org',
       to: email,
@@ -352,7 +398,7 @@ export const signUpFromLandingPage = async (req,res) => {
         <p>Bonjour,</p>
         <p>Vous avez été invité à créer un compte sur notre application CRM. Voici vos informations de connexion :</p>
         <p>Email: ${email}</p>
-        <p>Voici votre lien pour configurer votre compte : <a href="https://gabtrotter.org/auth/update-subscriber-link/${currentUser._id}">Lien de configuration</a></p>
+        <p>Voici votre lien personnel, valable 24 heures, pour configurer votre compte : <a href="${setupUrl}">Lien de configuration</a></p>
         <p>Cordialement,</p>
         <p>L\'équipe GabTrotter</p>
       `
@@ -368,7 +414,15 @@ export const signUpFromLandingPage = async (req,res) => {
 
 export const updateUserFromLandingPage = async (req,res) => {
   try{
-    const {password,fullname,_id} = req.body;
+    const {password,fullname,_id,setupToken} = req.body;
+    if (!setupToken) {
+      return res.status(401).json({ message: 'Lien de configuration incomplet' });
+    }
+    try {
+      verifyAccountSetupToken(setupToken, _id);
+    } catch {
+      return res.status(401).json({ message: 'Lien de configuration invalide ou expiré' });
+    }
     const user = await User.findOne({ _id:_id });
     if(!user){
       return res.status(400).json({ message: 'Utilisateur non trouvé' });

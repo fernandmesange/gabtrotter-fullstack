@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +11,7 @@ import axiosInstance from '@/api/axiosInstance'
 
 const UpdateNewUser = () => {
     const { id } = useParams()
+    const [searchParams] = useSearchParams()
     const [fullname, setFullname] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -60,6 +61,7 @@ const UpdateNewUser = () => {
                 fullname,
                 password,
                 mobileCode: mobileCode.join(''),
+                setupToken: searchParams.get('token'),
             })
             console.log(response.data)
             setSuccess(true)

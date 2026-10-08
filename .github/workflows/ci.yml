@@ -1,0 +1,202 @@
+name: CI et livraison Docker
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  MONGOMS_DISABLE_POSTINSTALL: 'true'
+
+jobs:
+  tests:
+    name: Tests backend et mobile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      fullstack_sha: ${{ steps.revisions.outputs.fullstack_sha }}
+      mobile_sha: ${{ steps.revisions.outputs.mobile_sha }}
+    steps:
+      - name: Vérifier l'accès au dépôt mobile privé
+        env:
+          REPOS_TOKEN: ${{ secrets.GABTROTTER_REPOS_TOKEN }}
+        run: |
+          if [[ -z "$REPOS_TOKEN" ]]; then
+            echo '::error::GABTROTTER_REPOS_TOKEN est requis pour tester le dépôt mobile privé. Les PR de forks doivent être reprises dans une branche de confiance.'
+            exit 1
+          fi
+      - name: Récupérer le backend et le frontend
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          path: gabtrotter-fullstack
+          persist-credentials: false
+      - name: Récupérer le mobile privé
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: fernandmesange/gabtrotter-survey-app
+          ref: ${{ vars.MOBILE_REF || 'main' }}
+          token: ${{ secrets.GABTROTTER_REPOS_TOKEN }}
+          path: gabtrotter-survey-app
+          persist-credentials: false
+      - name: Enregistrer les révisions testées
+        id: revisions
+        run: |
+          fullstack_sha=$(git -C gabtrotter-fullstack rev-parse HEAD)
+          mobile_sha=$(git -C gabtrotter-survey-app rev-parse HEAD)
+          echo "fullstack_sha=$fullstack_sha" >> "$GITHUB_OUTPUT"
+          echo "mobile_sha=$mobile_sha" >> "$GITHUB_OUTPUT"
+          echo "Backend et frontend testés à $fullstack_sha" >> "$GITHUB_STEP_SUMMARY"
+          echo "Mobile testé à $mobile_sha" >> "$GITHUB_STEP_SUMMARY"
+      - name: Installer Node.js 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: gabtrotter-fullstack/Backend/package-lock.json
+      - name: Installer Flutter 3.44.7
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.44.7'
+          channel: stable
+          cache: true
+      - name: Installer SQLite pour les tests Linux
+        run: sudo apt-get update && sudo apt-get install --yes libsqlite3-dev
+      - name: Installer les dépendances backend
+        working-directory: gabtrotter-fullstack/Backend
+        run: npm ci
+      - name: Installer les dépendances mobile verrouillées
+        working-directory: gabtrotter-survey-app
+        run: flutter pub get --enforce-lockfile
+      - name: Vérifier les services mobiles et les tests
+        working-directory: gabtrotter-survey-app
+        run: |
+          dart format --output=none --set-exit-if-changed lib/services/local_database.dart lib/services/api_client.dart lib/services/sync_service.dart test
+          flutter analyze --no-pub lib/services/local_database.dart lib/services/api_client.dart lib/services/sync_service.dart test
+      - name: Exécuter les 24 tests backend
+        working-directory: gabtrotter-fullstack/Backend
+        run: npm test
+      - name: Exécuter les 19 tests mobile
+        working-directory: gabtrotter-survey-app
+        run: flutter test --no-pub --reporter expanded
+      - name: Vérifier le parcours mobile et backend
+        working-directory: gabtrotter-fullstack/Backend
+        run: npm run test:mobile
+
+  docker:
+    name: Image Docker testée
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Récupérer la révision validée
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ needs.tests.outputs.fullstack_sha }}
+          persist-credentials: false
+      - name: Préparer la configuration frontend
+        id: config
+        env:
+          PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'fernandmesange/gabtrotter-fullstack' }}
+          API_URL: ${{ vars.VITE_API_URL }}
+          RECAPTCHA_SITE_KEY: ${{ vars.VITE_RECAPTCHA_SITE_KEY }}
+        run: |
+          if [[ "$PUBLISH" == 'true' && ( -z "$API_URL" || -z "$RECAPTCHA_SITE_KEY" ) ]]; then
+            echo '::error::Configurez VITE_API_URL et VITE_RECAPTCHA_SITE_KEY dans les variables GitHub avant une publication sur main.'
+            exit 1
+          fi
+          echo "api_url=${API_URL:-http://localhost}" >> "$GITHUB_OUTPUT"
+          echo "recaptcha_site_key=${RECAPTCHA_SITE_KEY:-ci-synthetic-public-site-key}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:sha-${GITHUB_SHA}-run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - name: Installer Node.js 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Installer les dépendances du contrôle Docker
+        working-directory: Backend
+        run: npm ci
+      - name: Préparer Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Construire l'image à tester
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: gabtrotter-ci:${{ github.sha }}
+          build-args: |
+            VITE_API_URL=${{ steps.config.outputs.api_url }}
+            VITE_NODE_ENV=production
+            VITE_RECAPTCHA_SITE_KEY=${{ steps.config.outputs.recaptcha_site_key }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.tests.outputs.fullstack_sha }}
+            gabtrotter.mobile.revision=${{ needs.tests.outputs.mobile_sha }}
+      - name: Exécuter l'image de production contre MongoDB temporaire
+        working-directory: Backend
+        env:
+          IMAGE: gabtrotter-ci:${{ github.sha }}
+        run: npm run test:docker -- "$IMAGE"
+      - name: Se connecter à GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'fernandmesange/gabtrotter-fullstack'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publier exactement l'image testée
+        id: publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'fernandmesange/gabtrotter-fullstack'
+        env:
+          LOCAL_IMAGE: gabtrotter-ci:${{ github.sha }}
+          IMAGE: ${{ steps.config.outputs.image }}
+        run: |
+          docker tag "$LOCAL_IMAGE" "$IMAGE"
+          docker push "$IMAGE"
+          digest=$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Image testée et publiée : $digest" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Déployer par SSH
+    needs: [tests, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'fernandmesange/gabtrotter-fullstack'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Récupérer la révision validée
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ needs.tests.outputs.fullstack_sha }}
+          persist-credentials: false
+      - name: Installer le digest validé sur le serveur
+        env:
+          GABTROTTER_IMAGE: ${{ needs.docker.outputs.digest }}
+          SSH_HOST: ${{ vars.SSH_HOST }}
+          SSH_USER: ${{ vars.SSH_USER }}
+          SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: bash scripts/deploy-ssh.sh
+      - name: Enregistrer le déploiement réussi
+        env:
+          IMAGE: ${{ needs.docker.outputs.digest }}
+        run: |
+          echo "Digest déployé et vérifié par SSH : $IMAGE" >> "$GITHUB_STEP_SUMMARY"

@@ -63,4 +63,14 @@
   body {
     @apply bg-background text-foreground;
   }
+  :focus-visible {
+    outline: 3px solid #0f766e;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .field {
+    @apply min-h-12 w-full border border-[#899691] bg-white px-3 py-2 text-base text-[#17211e] placeholder:text-[#687570];
+  }
 }

@@ -1,0 +1,14 @@
+services:
+  app:
+    image: ${GABTROTTER_IMAGE:?GABTROTTER_IMAGE must be a tested image digest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URL: ${MONGO_URL:?MONGO_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      SURVEY_DATA_ENCRYPTION_KEY: ${SURVEY_DATA_ENCRYPTION_KEY:?SURVEY_DATA_ENCRYPTION_KEY is required}
+    ports:
+      - '127.0.0.1:${APP_PORT:-5000}:5000'

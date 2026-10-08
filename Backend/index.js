@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDB } from './db/connectDB.js';
@@ -14,9 +15,15 @@ import statsRoutes from './routes/stats.route.js';
 import offerRoutes from './routes/offer.routes.js';
 import contactRoutes from './routes/contact.route.js';
 import coursesRoutes from './routes/courses.routes.js';
+import privacyRoutes from './routes/privacy.routes.js';
 import { v2 as cloudinary } from 'cloudinary';
+import { assertSurveyEncryptionConfigured } from './services/surveyDataEncryption.service.js';
 
 dotenv.config();
+
+if (process.env.NODE_ENV === 'production') {
+  assertSurveyEncryptionConfigured();
+}
 
 
 
@@ -25,12 +32,27 @@ const app = express();
 const port = process.env.PORT || 5300; // achanger en 5000
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      const allowUnconfiguredOrigin =
+        process.env.NODE_ENV !== 'production' && allowedOrigins.length === 0;
+      if (!origin || allowUnconfiguredOrigin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Origine non autorisée par CORS'));
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: [
       'Content-Type',
       'Authorization',
@@ -42,19 +64,11 @@ app.use(
 
 // Traitement des requêtes d'options (pré-vol CORS)
 
-app.use((req, res, next) => {
-  console.log(`${req.method} request to ${req.url}`);
-  next();
-});
-
-
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-app.use(bodyParser.json());
 
 app.use(express.json({limit: '20mb'}));
 app.use(cookieParser());
@@ -65,23 +79,15 @@ app.get('/api/health', (req, res) => {
 });
 
 
-app.use((req, res, next) => {
-  req.on('data', (chunk) => {
-    console.log(`Received data: ${chunk.length} octets`);
-  });
-  req.on('end', () => {
-    const contentLength = req.headers['content-length'];
-    console.log(
-      `Taille totale de la requête (Content-Length) : ${contentLength} octets`
-    );
-  });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 });
+const syncLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30 });
+const privacyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 });
 
-  next();
-});
-app.use('/api/auth/', userRoutes);
+app.use('/api/auth/', authLimiter, userRoutes);
 app.use('/api/stats/', statsRoutes);
 app.use('/api/events/', eventRoutes);
-app.use('/api/surveys/', surveyRoutes);
+app.use('/api/surveys/', syncLimiter, surveyRoutes);
+app.use('/api/privacy/', privacyLimiter, privacyRoutes);
 app.use('/api/reports/', reportRoutes);
 app.use('/api/offers/', offerRoutes);
 app.use('/api/contact/', contactRoutes);
@@ -98,4 +104,3 @@ app.listen(port, () => {
   connectDB();
   console.log(`Server is running on port ${port}`);
 });
-

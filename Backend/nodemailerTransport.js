@@ -9,8 +9,8 @@ const nodemailerTransport = nodemailer.createTransport({
       ciphers: 'SSLv3',
     },
     auth: {
-      user: 'contact@gabtrotter.org',
-      pass: 'Azerty2022@@*',
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
     },
   });
 

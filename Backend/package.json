@@ -6,6 +6,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "test": "node --test test/*.test.js",
+    "test:mobile": "node scripts/testMobileRoundTrip.js",
+    "test:docker": "node scripts/checkDockerImage.js",
+    "migrate:encrypt-surveys": "node scripts/encryptLegacySurveyResponses.js",
+    "migrate:encrypt-surveys:apply": "node scripts/encryptLegacySurveyResponses.js --apply",
     "copy-frontend": "cp -R ../Frontend/dist ./public"
   },
   "keywords": [],
@@ -14,22 +19,24 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.3",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "express-rate-limit": "^8.6.2",
+    "helmet": "^8.3.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.9.0",
     "mongoose": "^8.7.1",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.15",
+    "nodemailer": "^9.0.5",
     "nodemon": "^3.1.7",
     "qrcode": "^1.5.4",
-    "resend": "^4.0.0",
-    "xlsx": "^0.18.5"
+    "resend": "^4.0.0"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.3.0"
   }
 }

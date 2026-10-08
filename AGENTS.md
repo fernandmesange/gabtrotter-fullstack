@@ -44,10 +44,11 @@ Single test:
 - Install: `npm install`
 - Dev server: `npm run dev` (nodemon)
 - Start: `npm run start`
+- Tests: `npm test` (native Node.js runner, temporary MongoDB for integration tests).
 
 Single test:
-- No test runner configured in `Backend/package.json`.
-- If you add tests later, document the single-test command here.
+- `node --test test/collection.integration.test.js`
+- See `docs/tests-backend.md` for the scenarios and cross-component command.
 
 ### Full repo
 - Run frontend and backend from their folders.
@@ -137,9 +138,8 @@ Single test:
 - Access secrets via `process.env` only.
 - Never log tokens or passwords.
 
-### Tests (future)
-- If you introduce tests, add scripts in each package and
-  document single-test commands here.
+### Tests
+- Backend test commands are documented above and in `docs/tests-backend.md`.
 - Keep tests close to the code they validate.
 
 ### Git Hygiene

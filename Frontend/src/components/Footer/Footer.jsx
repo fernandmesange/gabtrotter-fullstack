@@ -34,6 +34,7 @@ const Footer = () => {
               <ul className="space-y-2">
                 {/* <li><a href="#" className="text-sm text-white hover:text-gray-900">Mentions légales</a></li> */}
                 <li><a href="/confidentiality" className="text-sm text-white hover:text-gray-900">Politique de confidentialité</a></li>
+                <li><a href="/privacy/requests" className="text-sm text-white hover:text-gray-900">Exercer vos droits sur vos données</a></li>
                 {/* <li><a href="#" className="text-sm text-white hover:text-gray-900">Conditions d'utilisation</a></li> */}
               </ul>
             </div>
